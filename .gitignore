@@ -1,0 +1,28 @@
+# Virtual Environments
+.venv/
+venv/
+env/
+
+# Security (NEVER UPLOAD THESE)
+.env
+.env.*
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Output Data & State (NEVER PUSH TO GITHUB)
+data/
+*.db
+*.xlsx
+*.csv
+
+# Ignore all JSONs globally...
+*.json
+# ...BUT explicitly protect our config file!
+!config/companies.json
+
+# OS generated files
+.DS_Store
+Thumbs.db
