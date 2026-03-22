@@ -116,5 +116,47 @@ def send_daily_digest():
         print(f"[-] Failed to send email: {e}")
         return False
 
+
+def send_error_alert(failed_step, error_traceback):
+    """Sends a high-priority plain-text alert if the pipeline crashes."""
+    print(f"[*] Dispatching critical error alert for: {failed_step}...")
+    load_dotenv()
+    
+    sender_email = os.getenv("SENDER_EMAIL")
+    app_password = os.getenv("EMAIL_PASSWORD")
+    receiver_email = os.getenv("RECEIVER_EMAIL")
+    
+    if not all([sender_email, app_password, receiver_email]):
+        print("[-] Error: Missing email credentials. Cannot send alert.")
+        return False
+
+    msg = EmailMessage()
+    msg['Subject'] = f'⚠️ PIPELINE CRASH: {failed_step}'
+    msg['From'] = sender_email
+    msg['To'] = receiver_email
+    
+    body = f"""
+    The AI Job Aggregator pipeline encountered a fatal error and halted.
+    
+    FAILED STEP: {failed_step}
+    
+    ERROR TRACEBACK:
+    {error_traceback}
+    
+    Please check the server logs.
+    """
+    msg.set_content(body)
+
+    try:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(sender_email, app_password)
+            smtp.send_message(msg)
+        print("[+] SUCCESS: Error alert delivered to your inbox.")
+        return True
+    except Exception as e:
+        print(f"[-] Failed to send error alert: {e}")
+        return False
+
+
 if __name__ == "__main__":
     send_daily_digest()

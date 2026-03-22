@@ -18,6 +18,9 @@ data/
 *.xlsx
 *.csv
 
+# Log data
+logs/
+
 # Ignore all JSONs globally...
 *.json
 # ...BUT explicitly protect our config file!
