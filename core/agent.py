@@ -5,6 +5,8 @@ import re
 import httpx
 from bs4 import BeautifulSoup
 import time
+import sys
+import os
 
 def load_candidate_profile():
     """Reads the external markdown profile."""
@@ -15,19 +17,40 @@ def load_candidate_profile():
         print("[-] Error: candidate_profile.md not found. Please create it.")
         return None
 
-def extract_score_and_verdict(ai_text):
-    """Parses the strict output format requested from Llama 3."""
-    score = 0
-    verdict = ai_text
-    
-    score_match = re.search(r'SCORE:\s*(\d+)', ai_text, re.IGNORECASE)
-    if score_match:
-        score = int(score_match.group(1))
-        
-    verdict_match = re.search(r'VERDICT:\s*(.*)', ai_text, re.IGNORECASE)
-    if verdict_match:
-        verdict = verdict_match.group(1).strip()
-        
+def calculate_deterministic_score(json_data):
+    """Calculates the job score deterministically based on extracted JSON facts."""
+    score = 100
+    verdict_reasons = []
+
+    # 1. Seniority Check (Python does the math)
+    if json_data.get('is_senior_role', False):
+        score -= 60
+        verdict_reasons.append("Seniority mismatch")
+
+    # 2. Language Check
+    if json_data.get('explicit_german_required', False):
+        score -= 40
+        verdict_reasons.append("German language requirement not met")
+
+    # 3. Tech Stack Check
+    missing_skills = json_data.get('missing_core_tech_skills', [])
+    if missing_skills:
+        penalty = len(missing_skills) * 15
+        score -= penalty
+        verdict_reasons.append(f"Missing skills: {', '.join(missing_skills)}")
+
+    # 4. Student Bonus
+    if json_data.get('is_student_or_intern', False):
+        score += 20
+        verdict_reasons.append("Working Student/Intern bonus applied")
+
+    # 5. Dynamic Verdict Generation
+    if score >= 70:
+        verdict = "Strong match based on technical skills and requirements."
+    else:
+        reason_str = " | ".join(verdict_reasons) if verdict_reasons else "Lacks core requirements."
+        verdict = f"Rejected: {reason_str}"
+
     return score, verdict
 
 def fetch_job_description(url):
@@ -96,62 +119,103 @@ def main():
         print(f"\n[*] Deep Analyzing: {job['title']} at {job['company']}")
         print(f"      -> Fetching full description from source...")
         
-        # ⬇️ THE NEW DEEP FETCH INTEGRATION ⬇️
+        # THE NEW DEEP FETCH INTEGRATION
         job_description = fetch_job_description(job['link'])
         
-        prompt = f"""
-        You are a highly literal, rigorous technical recruiter. You evaluate candidates based STRICTLY on the text provided. Do not invent requirements. Do not assume. 
+        # prompt = f"""
+        # You are a highly literal, rigorous technical recruiter. You evaluate candidates based STRICTLY on the text provided. Do not invent requirements. Do not assume. 
 
-        === CANDIDATE PROFILE ===
-        {profile_text}
+        # === CANDIDATE PROFILE ===
+        # {profile_text}
         
-        === JOB LISTING ===
-        Company: {job['company']}
-        Job Title: {job['title']}
-        Job Description: {job_description}
+        # === JOB LISTING ===
+        # Company: {job['company']}
+        # Job Title: {job['title']}
+        # Job Description: {job_description}
         
-        === SCORING RUBRIC (START AT 100 POINTS) ===
-        RULE 1 (STUDENT BOOST): If the Job Title contains "Working Student", "Werkstudent", or "Intern", ADD 20 POINTS.
+        # === SCORING RUBRIC (START AT 100 POINTS) ===
+        # RULE 1 (STUDENT BOOST): If the Job Title contains "Working Student", "Werkstudent", or "Intern", ADD 20 POINTS.
         
-        RULE 2 (SENIOR PENALTY): If the Job Title contains "Senior", "Lead", "Head", or asks for 3+ years experience, DEDUCT 50 POINTS.
+        # RULE 2 (SENIOR PENALTY): If the Job Title contains "Senior", "Lead", "Head", or asks for 3+ years experience, DEDUCT 50 POINTS.
         
-        RULE 3 (LANGUAGE PENALTY): If the JOB DESCRIPTION explicitly requires "Native/Fluent/C1 German", DEDUCT 30 POINTS. If the job description is in English and does not explicitly demand German, Make NO deduction.
+        # RULE 3 (LANGUAGE PENALTY): If the JOB DESCRIPTION explicitly requires "Native/Fluent/C1 German", DEDUCT 30 POINTS. If the job description is in English and does not explicitly demand German, Make NO deduction.
         
-        RULE 4 (TECH PENALTY): Deduct 5 points for every core technical skill required by the job that is explicitly MISSING from the candidate profile. Check the profile carefully (The candidate HAS Python, Pandas, Scikit-learn, PyTorch, SQL, etc.).
+        # RULE 4 (TECH PENALTY): Deduct 5 points for every core technical skill required by the job that is explicitly MISSING from the candidate profile. Check the profile carefully (The candidate HAS Python, Pandas, Scikit-learn, PyTorch, SQL, etc.).
         
-        === INSTRUCTIONS ===
-        You MUST think step-by-step. First, write a brief WORKSHEET analyzing each rule. Then, calculate the SCORE.
+        # === INSTRUCTIONS ===
+        # You MUST think step-by-step. First, write a brief WORKSHEET analyzing each rule. Then, calculate the SCORE.
         
-        You must reply using EXACTLY this format and nothing else:
-        WORKSHEET:
-        - Rule 1: [Your observation] -> [Points]
-        - Rule 2: [Your observation] -> [Points]
-        - Rule 3: [Your observation] -> [Points]
-        - Rule 4: [Your observation] -> [Points]
+        # You must reply using EXACTLY this format and nothing else:
+        # WORKSHEET:
+        # - Rule 1: [Your observation] -> [Points]
+        # - Rule 2: [Your observation] -> [Points]
+        # - Rule 3: [Your observation] -> [Points]
+        # - Rule 4: [Your observation] -> [Points]
         
-        SCORE: [Final Calculated Number]
-        VERDICT: [One sentence summary]
-        """
+        # SCORE: [Final Calculated Number]
+        # VERDICT: [One sentence summary]
+        # """
+        
+        # --- DYNAMIC PROMPT INJECTION ---
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        prompt_path = os.path.join(base_dir, "config", "prompt_template.txt")
+        
+        try:
+            with open(prompt_path, "r", encoding="utf-8") as f:
+                prompt_template = f.read()
+        except FileNotFoundError:
+            print(f"    [-] FATAL ERROR: {prompt_path} not found!")
+            sys.exit(1)
+        
+        # Using .replace() instead of .format() to avoid JSON bracket clashes
+        prompt = prompt_template.replace("{profile_text}", profile_text)
+        prompt = prompt.replace("{job_title}", job['title'])
+        prompt = prompt.replace("{company}", job['company'])
+        prompt = prompt.replace("{job_description}", job_description)
 
         try:
-            print(f"      -> Handing off to Llama 3 for evaluation...")
+            print(f"      -> Handing off to LLM for structured JSON extraction...")
+            
+            # --- THE UPGRADED ENGINE ---
+            # Notice format='json' and temperature=0.0
             response = ollama.generate(
                 model='llama3:8b', 
                 prompt=prompt,
-                options={'temperature': 0.1}
+                format='json', 
+                options={'temperature': 0.0}
             )
             
             ai_text = response['response'].strip()
-            score, verdict = extract_score_and_verdict(ai_text)
             
-            print(f"    -> [AI SCORE]: {score}")
-            print(f"    -> [AI VERDICT]: {verdict}")
+            # Print the raw JSON to terminal so we can see the LLM's "brain"
+            print(f"\n--- RAW LLM JSON ---\n{ai_text}\n----------------------\n")
             
-            # Save state to Database so we never evaluate this URL again
-            database.save_evaluation(conn, job, score, verdict)
+            try:
+                # Python converts the text string into a real dictionary
+                extracted_data = json.loads(ai_text)
+                
+                # Python calculates the perfect score
+                score, verdict = calculate_deterministic_score(extracted_data)
+                
+                print(f"    -> [DETERMINISTIC SCORE]: {score}")
+                print(f"    -> [VERDICT]: {verdict}")
+                
+                # Save state to Database so we never evaluate this URL again
+                database.save_evaluation(conn, job, score, verdict)
+                
+            except json.JSONDecodeError as e:
+                print(f"    [-] FATAL ERROR: LLM failed to output valid JSON. Output was: {ai_text}")
+                print(f"    [-] JSON Error details: {e}")
+                # Skip saving to DB so it tries again next run
+                continue
 
         except Exception as e:
             print(f"    [-] Error evaluating {job['title']}: {e}")
+            
+            # THE KILL SWITCH
+            if "Failed to connect to Ollama" in str(e) or "ConnectionRefusedError" in str(e):
+                print("    [!] FATAL: LLM Engine offline. Aborting agent.py...")
+                sys.exit(1)
 
     print("\n[+] SUCCESS: AI Evaluation Delta Run Complete!")
 

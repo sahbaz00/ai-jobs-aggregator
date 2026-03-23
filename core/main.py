@@ -31,6 +31,8 @@ def run_pipeline():
     steps = [
         ("Phase 1: Web Scraping", [sys.executable, "core/scraper.py"]),
         ("Phase 2: AI Evaluation", [sys.executable, "core/agent.py"]),
+        ("Phase 2.1: DB check", [sys.executable, "utils/inspect_db.py"]),
+        ("Phase 2.1: DB view", [sys.executable, "utils/db_viewer.py"]),
         ("Phase 3: Email Dispatch", [sys.executable, "utils/emailer.py"])
     ]
 
@@ -51,11 +53,15 @@ def run_pipeline():
                 logging.info(f"{step_name} completed successfully.\n{result.stdout}")
                 
             except subprocess.CalledProcessError as e:
-                error_msg = f"Fatal Error in {step_name}.\nExit Code: {e.returncode}\nError Output:\n{e.stderr}"
+                # Grab both stdout (print statements) and stderr (tracebacks)
+                error_msg = f"Fatal Error in {step_name}.\nExit Code: {e.returncode}\n\nLast Output:\n{e.stdout}\n\nError Traceback:\n{e.stderr}"
                 
                 print(f"\n[-] PIPELINE HALTED: {error_msg}")
                 logging.error(error_msg)
-                send_error_alert(step_name, e.stderr)
+                
+                # Send the fully detailed error to the email alert
+                send_error_alert(step_name, error_msg)
+                
                 sys.exit(1)
 
         success_msg = "✅ PIPELINE COMPLETED SUCCESSFULLY ✅"
