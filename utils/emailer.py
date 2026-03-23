@@ -3,7 +3,8 @@ import os
 import sqlite3
 from email.message import EmailMessage
 from dotenv import load_dotenv
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 def send_daily_digest():
     """Generates a native HTML email directly from the database and sends it."""
@@ -75,13 +76,30 @@ def send_daily_digest():
     for title, company, score, reasoning, url, date_discovered in jobs:
         color = "#28a745" if score >= 90 else "#d4a017" # Green for 90+, Gold for 40-89
         
+        # --- THE TIMEZONE TRANSLATOR ---
+        try:
+            # 1. Convert the DB string into a Python datetime object
+            utc_dt = datetime.strptime(date_discovered, "%Y-%m-%d %H:%M:%S")
+            
+            # 2. Explicitly tell Python this object is in UTC
+            utc_dt = utc_dt.replace(tzinfo=timezone.utc)
+            
+            # 3. Force conversion to German time, ignoring the AWS server's local clock
+            local_dt = utc_dt.astimezone(ZoneInfo("Europe/Berlin"))
+            
+            # 4. Turn it back into a string for the email HTML
+            display_time = local_dt.strftime("%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            # Fallback just in case the database format is slightly different
+            display_time = date_discovered
+            
         html_content += f"""
             <tr style="border-bottom: 1px solid #eee;">
               <td style="padding: 12px; font-weight: bold; color: {color};">{score}/100</td>
               <td style="padding: 12px;">
                 <a href="{url}" style="color: #0056b3; text-decoration: none; font-weight: bold;">{title}</a><br>
                 <span style="font-size: 0.9em; color: #6c757d;">@ {company}</span><br>
-                <span style="font-size: 0.8em; color: #999;">Found: {date_discovered}</span>
+                <span style="font-size: 0.8em; color: #999;">Found: {display_time}</span>
               </td>
               <td style="padding: 12px; font-size: 0.9em; color: #495057;">{reasoning}</td>
             </tr>
@@ -90,7 +108,7 @@ def send_daily_digest():
     html_content += """
           </tbody>
         </table>
-        <p style="font-size: 0.8em; color: #999; margin-top: 20px;">Automated by your MLOps Pipeline.</p>
+        <p style="font-size: 0.8em; color: #999; margin-top: 20px;">Automated by Shahbaz's MLOps Pipeline.</p>
       </body>
     </html>
     """
