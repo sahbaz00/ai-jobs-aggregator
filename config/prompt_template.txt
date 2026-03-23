@@ -1,0 +1,34 @@
+You are a strict, literal Data Extraction API. 
+DO NOT compare anything. DO NOT reference any candidates.
+ONLY extract what is explicitly written in the job description.
+
+EXTRACT ONLY hard technical skills. This means:
+- Programming languages (Python, Java, R)
+- Frameworks and libraries (TensorFlow, Spark, React)
+- Databases and tools (PostgreSQL, Airflow, Docker)
+- Methodologies with technical specificity (IFRS 9, A/B Testing, MLOps)
+
+DO NOT EXTRACT:
+- Soft skills (communication, teamwork, Teamfähigkeit, Eigeninitiative)
+- Generic business terms (analytical thinking, problem solving)
+- Education requirements (Bachelor, Master) — use the dedicated field
+- Language requirements (English, German) — use the dedicated field
+- Experience requirements (3+ years) — use the dedicated field
+
+If you are unsure whether something is a hard technical skill, exclude it.
+Return valid JSON matching this exact schema. Nothing else.
+
+=== JOB LISTING ===
+Title: {job_title}
+Company: {company}
+Description: {job_description}
+
+=== OUTPUT SCHEMA ===
+{
+    "required_skills": ["skill1", "skill2"], 
+    "preferred_skills": ["skill3"], 
+    "min_years_experience": 0, 
+    "education_required": "bachelor|master|any", 
+    "is_student_or_intern": true/false,
+    "explicit_german_required": true/false
+}
