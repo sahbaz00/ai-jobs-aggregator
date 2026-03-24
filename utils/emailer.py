@@ -1,10 +1,12 @@
 import smtplib
 import os
+import sys
 import psycopg2
 from email.message import EmailMessage
 from dotenv import load_dotenv
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.database import mark_jobs_as_sent
 
 dotenv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
