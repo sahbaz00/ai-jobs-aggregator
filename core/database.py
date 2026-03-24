@@ -22,7 +22,8 @@ def init_db():
             company TEXT,
             ai_score INTEGER,
             ai_reasoning TEXT,
-            date_discovered TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            date_discovered TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            email_sent BOOLEAN DEFAULT FALSE
         )
     """)
     conn.commit()
@@ -55,3 +56,16 @@ def save_evaluation(conn, job: dict, score: float, reasoning: str):
         reasoning
     ))
     conn.commit()
+
+
+def mark_jobs_as_sent(conn, urls: list):
+    """Marks a list of job URLs as emailed so they are never sent again."""
+    if not urls:
+        return
+    cursor = conn.cursor()
+    cursor.executemany(
+        "UPDATE evaluated_jobs SET email_sent = TRUE WHERE url = %s",
+        [(url,) for url in urls]
+    )
+    conn.commit()
+    cursor.close()

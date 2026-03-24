@@ -5,6 +5,7 @@ from email.message import EmailMessage
 from dotenv import load_dotenv
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
+from core.database import mark_jobs_as_sent
 
 dotenv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
 load_dotenv(dotenv_path=dotenv_path)
@@ -32,25 +33,25 @@ def send_daily_digest():
         conn = psycopg2.connect(database_url)
         cursor = conn.cursor()
 
-        # PostgreSQL uses DATE() function instead of LIKE for date comparison
         cursor.execute("""
             SELECT title, company, ai_score, ai_reasoning, url, date_discovered
             FROM evaluated_jobs
             WHERE ai_score >= 40
-            AND DATE(date_discovered) = CURRENT_DATE
+            AND email_sent = FALSE
             ORDER BY ai_score DESC
         """)
 
         jobs = cursor.fetchall()
         cursor.close()
-        conn.close()
+        # ← DO NOT close conn here anymore, needed later for mark_jobs_as_sent
 
     except psycopg2.Error as e:
         print(f"[-] Database Error: {e}")
         return False
 
     if not jobs:
-        print(f"[*] No new high-scoring jobs found for {today_str}. Skipping email.")
+        print(f"[*] No unsent high-scoring jobs found. Skipping email.")
+        conn.close()
         return True
 
     html_content = f"""
@@ -122,11 +123,22 @@ def send_daily_digest():
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
             smtp.login(sender_email, app_password)
             smtp.send_message(msg)
+
+        # Only mark as sent AFTER email confirmed delivered
+        sent_urls = [job[4] for job in jobs]  # url is index 4
+        mark_jobs_as_sent(conn, sent_urls)
+        print(f"    -> Marked {len(sent_urls)} jobs as sent in database.")
+
         print("[+] SUCCESS: HTML Daily digest delivered to your inbox!")
         return True
+
     except Exception as e:
         print(f"[-] Failed to send email: {e}")
+        # DO NOT mark as sent if email failed
         return False
+
+    finally:
+        conn.close()  # ← always close connection at the very end
 
 
 def send_error_alert(failed_step, error_traceback):
