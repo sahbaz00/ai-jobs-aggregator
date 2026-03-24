@@ -40,7 +40,7 @@ The system follows a strict **Extract → Compute → Evaluate** pattern, separa
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    DAILY PIPELINE                        │
+│                    DAILY PIPELINE                       │
 │                                                         │
 │  Phase 0         Phase 1          Phase 2               │
 │  ────────        ────────         ────────              │
