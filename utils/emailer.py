@@ -1,53 +1,51 @@
 import smtplib
 import os
-import sqlite3
+import psycopg2
 from email.message import EmailMessage
 from dotenv import load_dotenv
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
+dotenv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
+load_dotenv(dotenv_path=dotenv_path)
+
 def send_daily_digest():
-    """Generates a native HTML email directly from the database and sends it."""
+    """Generates a native HTML email directly from Supabase and sends it."""
     print("[*] Initializing HTML Email Engine...")
-    load_dotenv()
-    
+
     sender_email = os.getenv("SENDER_EMAIL")
     app_password = os.getenv("EMAIL_PASSWORD")
     receiver_email = os.getenv("RECEIVER_EMAIL")
-    
+    database_url = os.getenv("SUPABASE_DB_URL")
+
     if not all([sender_email, app_password, receiver_email]):
         print("[-] Error: Missing email credentials in .env file.")
         return False
 
-    # Pathing: Up to root, down to data folder
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    db_path = os.path.join(base_dir, "data", "jobs_state.db")
-
-    if not os.path.exists(db_path):
-        print("[-] Error: Database not found. Run the pipeline first.")
+    if not database_url:
+        print("[-] Error: SUPABASE_DB_URL not found in .env file.")
         return False
 
-    # THE SENIOR MOVE: Calculate today's date
     today_str = datetime.now().strftime('%Y-%m-%d')
 
-    # Query the database for high-quality jobs discovered ONLY today
     try:
-        conn = sqlite3.connect(db_path)
+        conn = psycopg2.connect(database_url)
         cursor = conn.cursor()
-        
-        # The ? is a parameterized query to protect against SQL injection
-        # We use LIKE '2026-03-22%' to catch any time of day it was scraped
+
+        # PostgreSQL uses DATE() function instead of LIKE for date comparison
         cursor.execute("""
-            SELECT title, company, ai_score, ai_reasoning, url, date_discovered 
-            FROM evaluated_jobs 
-            WHERE ai_score >= 40 
-            AND date_discovered LIKE ?
+            SELECT title, company, ai_score, ai_reasoning, url, date_discovered
+            FROM evaluated_jobs
+            WHERE ai_score >= 40
+            AND DATE(date_discovered) = CURRENT_DATE
             ORDER BY ai_score DESC
-        """, (f"{today_str}%",))
-        
+        """)
+
         jobs = cursor.fetchall()
+        cursor.close()
         conn.close()
-    except sqlite3.Error as e:
+
+    except psycopg2.Error as e:
         print(f"[-] Database Error: {e}")
         return False
 
@@ -55,7 +53,6 @@ def send_daily_digest():
         print(f"[*] No new high-scoring jobs found for {today_str}. Skipping email.")
         return True
 
-    # Constructing the HTML Table
     html_content = f"""
     <html>
       <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
@@ -72,27 +69,27 @@ def send_daily_digest():
           <tbody>
     """
 
-    # Unpack the new date_discovered variable in the loop
     for title, company, score, reasoning, url, date_discovered in jobs:
-        color = "#28a745" if score >= 90 else "#d4a017" # Green for 90+, Gold for 40-89
-        
-        # --- THE TIMEZONE TRANSLATOR ---
+        color = "#28a745" if score >= 90 else "#d4a017"
+
+        # PostgreSQL returns date_discovered as a real datetime object
+        # No need to parse it — just convert timezone directly
         try:
-            # 1. Convert the DB string into a Python datetime object
-            utc_dt = datetime.strptime(date_discovered, "%Y-%m-%d %H:%M:%S")
-            
-            # 2. Explicitly tell Python this object is in UTC
-            utc_dt = utc_dt.replace(tzinfo=timezone.utc)
-            
-            # 3. Force conversion to German time, ignoring the AWS server's local clock
-            local_dt = utc_dt.astimezone(ZoneInfo("Europe/Berlin"))
-            
-            # 4. Turn it back into a string for the email HTML
+            if hasattr(date_discovered, 'astimezone'):
+                # Already a datetime object from PostgreSQL
+                if date_discovered.tzinfo is None:
+                    date_discovered = date_discovered.replace(tzinfo=timezone.utc)
+                local_dt = date_discovered.astimezone(ZoneInfo("Europe/Berlin"))
+            else:
+                # Fallback: parse as string
+                utc_dt = datetime.strptime(str(date_discovered), "%Y-%m-%d %H:%M:%S")
+                utc_dt = utc_dt.replace(tzinfo=timezone.utc)
+                local_dt = utc_dt.astimezone(ZoneInfo("Europe/Berlin"))
+
             display_time = local_dt.strftime("%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            # Fallback just in case the database format is slightly different
-            display_time = date_discovered
-            
+        except Exception:
+            display_time = str(date_discovered)
+
         html_content += f"""
             <tr style="border-bottom: 1px solid #eee;">
               <td style="padding: 12px; font-weight: bold; color: {color};">{score}/100</td>
@@ -113,13 +110,10 @@ def send_daily_digest():
     </html>
     """
 
-    # Construct the Email Object
     msg = EmailMessage()
     msg['Subject'] = f'🚀 {len(jobs)} High-Scoring AI Job Matches'
     msg['From'] = sender_email
     msg['To'] = receiver_email
-    
-    # Set fallback text, then add the beautiful HTML
     msg.set_content("Please enable HTML to view this email.")
     msg.add_alternative(html_content, subtype='html')
 
@@ -138,12 +132,11 @@ def send_daily_digest():
 def send_error_alert(failed_step, error_traceback):
     """Sends a high-priority plain-text alert if the pipeline crashes."""
     print(f"[*] Dispatching critical error alert for: {failed_step}...")
-    load_dotenv()
-    
+
     sender_email = os.getenv("SENDER_EMAIL")
     app_password = os.getenv("EMAIL_PASSWORD")
     receiver_email = os.getenv("RECEIVER_EMAIL")
-    
+
     if not all([sender_email, app_password, receiver_email]):
         print("[-] Error: Missing email credentials. Cannot send alert.")
         return False
@@ -152,18 +145,16 @@ def send_error_alert(failed_step, error_traceback):
     msg['Subject'] = f'⚠️ PIPELINE CRASH: {failed_step}'
     msg['From'] = sender_email
     msg['To'] = receiver_email
-    
-    body = f"""
-    The AI Job Aggregator pipeline encountered a fatal error and halted.
-    
-    FAILED STEP: {failed_step}
-    
-    ERROR TRACEBACK:
-    {error_traceback}
-    
-    Please check the server logs.
-    """
-    msg.set_content(body)
+    msg.set_content(f"""
+The AI Job Aggregator pipeline encountered a fatal error and halted.
+
+FAILED STEP: {failed_step}
+
+ERROR TRACEBACK:
+{error_traceback}
+
+Please check the server logs.
+    """)
 
     try:
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:

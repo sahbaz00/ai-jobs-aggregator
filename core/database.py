@@ -1,12 +1,21 @@
-import sqlite3
+import os
+import psycopg2
+from dotenv import load_dotenv
+load_dotenv()
 
-def init_db(db_name="data/jobs_state.db"):
-    """Initializes the local SQLite database and creates the state table."""
-    conn = sqlite3.connect(db_name)
+# Connect to the database
+def get_connection():
+    """Creates and returns a Supabase PostgreSQL connection."""
+    DATABASE_URL = os.getenv("SUPABASE_DB_URL")
+    if not DATABASE_URL:
+        raise ValueError("SUPABASE_DB_URL not found in environment variables.")
+    return psycopg2.connect(DATABASE_URL)
+
+def init_db():
+    """Ensures the evaluated_jobs table exists. Returns connection."""
+    conn = get_connection()
     cursor = conn.cursor()
-    
-    # We use the URL as the PRIMARY KEY. This guarantees no duplicates.
-    cursor.execute('''
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS evaluated_jobs (
             url TEXT PRIMARY KEY,
             title TEXT,
@@ -15,21 +24,34 @@ def init_db(db_name="data/jobs_state.db"):
             ai_reasoning TEXT,
             date_discovered TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-    ''')
+    """)
     conn.commit()
+    cursor.close()
     return conn
 
-def is_job_evaluated(conn, url):
-    """Checks if a job URL already exists in the database."""
+def is_job_evaluated(conn, url: str) -> bool:
+    """Returns True if this URL already exists in the database."""
     cursor = conn.cursor()
-    cursor.execute('SELECT 1 FROM evaluated_jobs WHERE url = ?', (url,))
-    return cursor.fetchone() is not None
+    cursor.execute(
+        "SELECT url FROM evaluated_jobs WHERE url = %s",
+        (url,)
+    )
+    result = cursor.fetchone()
+    cursor.close()
+    return result is not None
 
-def save_evaluation(conn, job, score, reasoning):
-    """Saves the AI's evaluation to the database so we never process it again."""
+def save_evaluation(conn, job: dict, score: float, reasoning: str):
+    """Saves a job evaluation result to Supabase."""
     cursor = conn.cursor()
-    cursor.execute('''
+    cursor.execute("""
         INSERT INTO evaluated_jobs (url, title, company, ai_score, ai_reasoning)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (job['link'], job['title'], job['company'], score, reasoning))
+        VALUES (%s, %s, %s, %s, %s)
+        ON CONFLICT (url) DO NOTHING
+    """, (
+        job['link'],
+        job['title'],
+        job['company'],
+        int(round(score)),
+        reasoning
+    ))
     conn.commit()
