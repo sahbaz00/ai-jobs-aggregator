@@ -285,6 +285,8 @@ def scrape_join(raw_url):
                     if is_relevant_job(title):
                         full_link = f"https://join.com/companies/{company_slug}/{slug}"
                         
+                        print(f"      [DEBUG] Found slug: {slug} for title: {title}")  # ← ADD THIS
+                        
                         if not any(j['link'] == full_link for j in jobs):
                             jobs.append({
                                 "title": title,
