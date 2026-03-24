@@ -338,7 +338,9 @@ def scrape_join(raw_url):
             if next_data_script:
                 try:
                     json_data = json.loads(next_data_script.string)
+                    jobs_before_page = len(jobs)        # ← measure BEFORE
                     tech_jobs, raw_jobs = find_jobs(json_data)
+                    jobs_after_page = len(jobs)         # ← measure AFTER
                 except json.JSONDecodeError:
                     print("      [-] Error decoding JSON data.")
             else:
@@ -349,6 +351,11 @@ def scrape_join(raw_url):
             
             if raw_jobs == 0:
                 print("      -> No more jobs found on this page. Reached the end.")
+                break
+
+            # Stop if this page added zero NEW unique jobs
+            if jobs_after_page == jobs_before_page:
+                print("      -> No new unique jobs found. Pagination complete.")
                 break
                 
             page += 1

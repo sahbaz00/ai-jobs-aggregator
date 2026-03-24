@@ -27,12 +27,12 @@
     {
         "name": "Delicious-Data",
         "careers_url": "https://join.com/companies/delicious-data",
-        "is_active": true
+        "is_active": false
     },
     {
         "name": "JOIN",
         "careers_url": "https://join.com/companies/join",
-        "is_active": false
+        "is_active": true
     },
     {
         "name": "SIEMENS",
