@@ -7,6 +7,11 @@ from bs4 import BeautifulSoup
 import time
 import sys
 import os
+from groq import Groq
+from dotenv import load_dotenv
+load_dotenv() # to load .env file content which we need to grab API key
+
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 # ==========================================
 # PHASE 0: STATIC PROFILE LOADING
@@ -171,7 +176,7 @@ def main():
         prompt_template = f.read()
 
     # Define your model here (Update to what you have installed: llama3.1, qwen2.5, gemma2)
-    MODEL_NAME = 'gemma3:12b'
+    MODEL_NAME = "llama-3.3-70b-versatile"
 
     for job in new_jobs_to_evaluate:
         print(f"\n[*] Processing: {job['title']} at {job['company']}")
@@ -183,15 +188,16 @@ def main():
         prompt = prompt.replace("{job_description}", job_description)
 
         try:
-            print("      -> [Phase 1] Extracting JD facts via LLM...")
-            response = ollama.generate(
-                model=MODEL_NAME, 
-                prompt=prompt,
-                format='json', 
-                options={'temperature': 0.0}
+            response = client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=[
+                    {"role": "system", "content": "You are a strict data extraction API. Return only valid JSON. No explanation. No markdown."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.0,
+                response_format={"type": "json_object"}
             )
-            
-            jd_profile = json.loads(response['response'].strip())
+            jd_profile = json.loads(response.choices[0].message.content)
             
             # --- PHASE 2: COMPUTE (Python Math) ---
             print("      -> [Phase 2] Computing deterministic overlap metrics...")
@@ -212,13 +218,15 @@ def main():
             Task: Write exactly TWO sentences summarizing why this candidate is or isn't a fit based on the data above.
             Do NOT output JSON. Just write the two sentences.
             """
-            eval_response = ollama.generate(
+            eval_response = client.chat.completions.create(
                 model=MODEL_NAME,
-                prompt=eval_prompt,
-                options={'temperature': 0.2} # Slight creativity for natural language
+                messages=[
+                    {"role": "system", "content": "You are a technical recruiter. Be concise and honest."},
+                    {"role": "user", "content": eval_prompt}
+                ],
+                temperature=0.2
             )
-            
-            ai_reasoning = eval_response['response'].strip()
+            ai_reasoning = eval_response.choices[0].message.content.strip()
             print(f"      -> Verdict: {ai_reasoning}")
 
             # --- PHASE 4: STORAGE ---
@@ -229,8 +237,8 @@ def main():
             continue
         except Exception as e:
             print(f"      [-] Error processing {job['title']}: {e}")
-            if "Failed to connect to Ollama" in str(e):
-                print("      [!] FATAL: LLM Engine offline.")
+            if "groq" in str(e).lower() or "401" in str(e) or "api" in str(e).lower():
+                print("      [!] FATAL: Groq API error. Check your GROQ_API_KEY.")
                 sys.exit(1)
 
     print("\n[+] SUCCESS: V3 Hybrid Pipeline Complete!")
