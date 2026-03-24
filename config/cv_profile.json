@@ -1,0 +1,25 @@
+{
+    "skills": [
+        "python", "sql", "oracle", "postgresql", "greenplum", 
+        "dataiku", "pandas", "numpy", "scikit-learn", 
+        "machine learning", "predictive modelling", "regression", "classification",
+        "deep learning", "tensorflow", "pytorch", "cnn", "keras",
+        "computer vision", "transfer learning", "mobilenetv2",
+        "llm", "gemini api", "nlp", "prompt engineering",
+        "etl", "data engineering", "pipeline automation",
+        "statistical modeling", "a/b testing", "feature engineering",
+        "data visualization", "tableau",
+        "git", "github", "docker", "jira", "firebase", "gradio", "huggingface", "mlops",
+        "credit risk modelling", "ifrs 9", "probability of default"
+    ],
+    "years_experience": 1,
+    "education_level": "master",
+    "job_titles_held": [
+        "data scientist", 
+        "data analyst", 
+        "machine learning engineer", 
+        "ai engineer",
+        "data engineer",
+        "data science intern"
+    ]
+}
