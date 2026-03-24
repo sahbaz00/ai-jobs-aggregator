@@ -4,6 +4,7 @@ import httpx
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 import re # Make sure 're' is imported at the top of your file!
+import os
 
 
 # ==========================================
@@ -537,6 +538,7 @@ def run_daily_pipeline():
         return
 
     all_raw_jobs = []
+    seen_urls = set()
 
     # Route the Tasks
     for company in targets:
@@ -549,7 +551,10 @@ def run_daily_pipeline():
             if name in SCRAPER_REGISTRY:
                 scraper_function = SCRAPER_REGISTRY[name]
                 company_jobs = scraper_function(url)
-                all_raw_jobs.extend(company_jobs)
+                for job in company_jobs:
+                    if job['link'] not in seen_urls:
+                        seen_urls.add(job['link'])
+                        all_raw_jobs.append(job)
             else:
                 print(f"    [-] Warning: No custom parser built yet for {name}. Skipping.")
         else:
@@ -558,6 +563,7 @@ def run_daily_pipeline():
     # Save the aggregated raw data
     print(f"\n[*] Pipeline Complete. Total raw jobs collected: {len(all_raw_jobs)}")
     
+    os.makedirs("data", exist_ok=True)
     with open("data/multi_company_raw_jobs.json", "w", encoding="utf-8") as f:
         json.dump(all_raw_jobs, f, indent=4, ensure_ascii=False)
         
