@@ -2,8 +2,11 @@ name: daily hybrid ai jobs pipeline
 
 on:
   schedule:
-    - cron: '17 12 * * *'
-  workflow_dispatch:
+    - cron: '11 5 * * *'  # Moved to 5:11 AM UTC to avoid the global queue
+  workflow_dispatch:      # Keeps your manual button
+  push:                   # THE NEW TRIGGER
+    branches:
+      - main              # Only runs when you push to the main branch
 
 jobs:
   run-pipeline:
