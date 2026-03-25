@@ -2,11 +2,11 @@ name: daily hybrid ai jobs pipeline
 
 on:
   schedule:
-    - cron: '11 5 * * *'  # Moved to 5:11 AM UTC to avoid the global queue
+    - cron: '15 5 * * *'  # Moved to 5:11 AM UTC to avoid the global queue
   workflow_dispatch:      # Keeps your manual button
-  push:                   # THE NEW TRIGGER
-    branches:
-      - main              # Only runs when you push to the main branch
+  # push:                   # THE NEW TRIGGER
+  #   branches:
+  #     - main              # Only runs when you push to the main branch
 
 jobs:
   run-pipeline:
@@ -40,4 +40,4 @@ jobs:
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: python core/main.py
+        run: python -u core/main.py
