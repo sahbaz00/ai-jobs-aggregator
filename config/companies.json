@@ -12,12 +12,12 @@
     {
         "name": "SAP",
         "careers_url": "https://jobs.sap.com/search/?createNewAlert=false&q=data&locationsearch=&optionsFacetsDD_department=Consulting++and+Professional+Services&optionsFacetsDD_customfield3=Student&optionsFacetsDD_country=DE",
-        "is_active": false
+        "is_active": true
     },
     {
         "name": "SAP",
         "careers_url": "https://jobs.sap.com/search/?createNewAlert=false&q=&locationsearch=&optionsFacetsDD_department=Software-Design+and+Development&optionsFacetsDD_customfield3=&optionsFacetsDD_country=DE",
-        "is_active": false
+        "is_active": true
     },
     {
         "name": "Holidu",
@@ -32,11 +32,11 @@
     {
         "name": "JOIN",
         "careers_url": "https://join.com/companies/join",
-        "is_active": false
+        "is_active": true
     },
     {
         "name": "SIEMENS",
         "careers_url": "https://jobs.siemens.com/en_US/externaljobs/SearchJobs/?42386=%5B812132%5D&42386_format=17546&42387=%5B814103%2C813141%5D&42387_format=17547&42389=%5B102117%2C102119%2C102122%2C102114%2C102134%2C102133%2C102127%5D&42389_format=17549&42390=%5B102154%5D&42390_format=17550&listFilterMode=1&folderRecordsPerPage=6&",
-        "is_active": false
+        "is_active": true
     }
 ]
