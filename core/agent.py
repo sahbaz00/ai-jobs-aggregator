@@ -1,5 +1,4 @@
 import json
-import ollama
 import database
 import re
 import httpx
