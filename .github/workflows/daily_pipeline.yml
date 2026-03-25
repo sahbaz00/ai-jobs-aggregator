@@ -2,7 +2,7 @@ name: daily hybrid ai jobs pipeline
 
 on:
   schedule:
-    - cron: '0 5 * * *'
+    - cron: '17 12 * * *'
   workflow_dispatch:
 
 jobs:
