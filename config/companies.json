@@ -32,7 +32,7 @@
     {
         "name": "JOIN",
         "careers_url": "https://join.com/companies/join",
-        "is_active": true
+        "is_active": false
     },
     {
         "name": "SIEMENS",

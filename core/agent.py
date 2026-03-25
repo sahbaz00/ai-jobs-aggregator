@@ -176,7 +176,7 @@ def main():
         prompt_template = f.read()
 
     # Define your model here (Update to what you have installed: llama3.1, qwen2.5, gemma2)
-    MODEL_NAME = "llama-3.3-70b-versatile"
+    MODEL_NAME = "llama-3.1-8b-instant" # "llama-3.3-70b-versatile"
 
     for job in new_jobs_to_evaluate:
         print(f"\n[*] Processing: {job['title']} at {job['company']}")
