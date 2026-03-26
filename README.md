@@ -247,6 +247,12 @@ Migrated from local Ollama (gemma3:12b, 3–5 min/job on CPU) to Groq API (llama
 
 ---
 
+## 📑 Documentation
+For a deep dive into the architectural decisions, trade-offs, and design constraints of this system, see the:
+**[Full Architecture Decision Record (ADR) →](https://drive.google.com/file/d/1YFFbiGoZh2udI99gRtxIytuizDzYlX4n/view?usp=sharing)**
+
+---
+
 ## Key Engineering Challenges
 
 ### 1. LLM Arithmetic Hallucinations *(V1 → V2)*
