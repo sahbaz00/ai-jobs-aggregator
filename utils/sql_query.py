@@ -13,11 +13,28 @@ def get_connection():
 conn = get_connection()
 
 cursor = conn.cursor()
+# cursor.execute(
+#     """SELECT url, title, count(*) as count 
+#     FROM evaluated_jobs 
+#     GROUP BY url, title 
+#     HAVING count(*) > 1;"""
+# )
+
+# cursor.execute(
+#     """
+#     SELECT url, title
+#     FROM evaluated_jobs;
+#     """
+# )
+
+# check RLS (Row Level Security) activated or not
 cursor.execute(
-    """SELECT url, title, count(*) as count 
-    FROM evaluated_jobs 
-    GROUP BY url, title 
-    HAVING count(*) > 1;"""
+    """
+    SELECT tablename, rowsecurity 
+    FROM pg_tables
+    WHERE tablename = 'evaluated_jobs';
+    """
 )
+
 result = cursor.fetchall()
 print(result)

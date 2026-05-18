@@ -479,6 +479,65 @@ def scrape_siemens(raw_url):
     return jobs
 
 
+def scrape_ecog(base_url):
+    """Deterministic parser for Personio ATS (EcoG)."""
+    print("    -> Running custom EcoG parser...")
+    jobs = []
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    
+    try:
+        response = httpx.get(base_url, headers=headers, timeout=15.0)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Recon Intelligence: All jobs use the 'job-box' class
+        job_links = soup.find_all('a', class_='job-box')
+        
+        raw_page_job_count = 0
+        tech_page_job_count = 0
+        
+        for link in job_links:
+            href = link.get('href')
+            if not href:
+                continue
+                
+            raw_page_job_count += 1
+            
+            # THE FIX: Personio squashes text tags together. 
+            # Using a separator forces a clean break between the title, location, and job type.
+            raw_text = link.get_text(separator=" | ", strip=True)
+            
+            # e.g., "IoT API software engineer | Office DE - Munich | Full-time"
+            # We just split by the pipe and take the first element to get a perfect title!
+            title = raw_text.split(" | ")[0].strip()
+            
+            # Build absolute URL
+            if href.startswith('/'):
+                full_link = f"https://ecog.jobs.personio.de{href}"
+            else:
+                full_link = href
+                
+            # STAGE 1 FUNNEL: Apply our central heuristic
+            if is_relevant_job(title):
+                # Deduplication check
+                if not any(j['link'] == full_link for j in jobs):
+                    jobs.append({
+                        "title": title,
+                        "link": full_link,
+                        "company": "EcoG"
+                    })
+                    tech_page_job_count += 1
+                    
+        print(f"      -> Scanned {raw_page_job_count} raw links, saved {tech_page_job_count} Data/Tech jobs.")
+        print(f"    -> [Success] Extracted a total of {len(jobs)} EcoG Data/Tech jobs.")
+        
+    except Exception as e:
+        print(f"    [-] EcoG scraping failed: {e}")
+        
+    return jobs
+
+
 # ==========================================
 # 2. THE ROUTER REGISTRY
 # ==========================================
@@ -489,7 +548,8 @@ SCRAPER_REGISTRY = {
     "SAP": scrape_sap,
     "Delicious-Data": scrape_join,
     "JOIN": scrape_join,
-    "SIEMENS":scrape_siemens
+    "SIEMENS":scrape_siemens,
+    "EcoG": scrape_ecog
 }
 
 

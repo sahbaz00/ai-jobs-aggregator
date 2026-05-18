@@ -38,5 +38,10 @@
         "name": "SIEMENS",
         "careers_url": "https://jobs.siemens.com/en_US/externaljobs/SearchJobs/?42386=%5B812132%5D&42386_format=17546&42387=%5B814103%2C813141%5D&42387_format=17547&42389=%5B102117%2C102119%2C102122%2C102114%2C102134%2C102133%2C102127%5D&42389_format=17549&42390=%5B102154%5D&42390_format=17550&listFilterMode=1&folderRecordsPerPage=6&",
         "is_active": true
+    },
+    {
+        "name": "EcoG",
+        "careers_url": "https://ecog.jobs.personio.de/?language=en",
+        "is_active": true
     }
 ]
